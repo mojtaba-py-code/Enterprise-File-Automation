@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enterprise-file-automation"
+version = "1.0.0"
+description = "Professional, config-driven file automation: watch, classify, convert, compress, encrypt, back up and report."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Mojtaba" }]
+keywords = ["automation", "files", "pipeline", "backup", "encryption"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: System :: Archiving",
+]
+dependencies = [
+    "PyYAML>=6.0",
+    "python-dotenv>=1.0",
+    "cryptography>=42.0",
+    "Pillow>=10.0",
+    "schedule>=1.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-PyYAML>=6.0",
+]
+
+[project.scripts]
+file-automation = "file_automation.main:main"
+
+[project.urls]
+Homepage = "https://github.com/mojtaba/enterprise-file-automation"
+Repository = "https://github.com/mojtaba/enterprise-file-automation"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+file_automation = ["py.typed"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra -q"
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "C4", "RUF"]
+ignore = []
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
+packages = ["file_automation"]
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = ["schedule"]
+ignore_missing_imports = true

@@ -1,0 +1,100 @@
+# =============================================================================
+# Enterprise File Automation — example configuration
+# Copy to config/config.yaml and adjust. Secrets are read from the environment,
+# NOT from this file (see .env.example).
+# =============================================================================
+
+# How often the batch scan runs.
+schedule:
+  interval_minutes: 10
+  run_immediately: true      # run one scan right away on startup
+
+# Maximum processing attempts per file before it is permanently skipped.
+max_retries: 3
+
+# Scan sub-directories of the inbox as well.
+recursive: true
+
+# All paths are relative to the current working directory (or absolute).
+paths:
+  inbox: ./watched/inbox
+  output: ./watched/output
+  failed: ./watched/failed
+  staging: ./watched/.staging
+  backup: ./backups
+  state_file: ./state.json
+
+# Order of processing steps. Remove or reorder freely; unknown names error out.
+# NOTE: always compress BEFORE encrypt (encrypted data no longer compresses).
+pipeline:
+  - classify
+  - convert
+  - rename
+  - compress
+  - encrypt
+  - backup
+
+# --- classify ---------------------------------------------------------------
+# First matching category wins; extensions are case-insensitive.
+classify:
+  default_category: misc
+  rules:
+    images: [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff"]
+    documents: [".pdf", ".doc", ".docx", ".txt", ".md", ".rtf", ".odt"]
+    spreadsheets: [".xls", ".xlsx", ".csv", ".ods"]
+    archives: [".zip", ".tar", ".gz", ".7z", ".rar"]
+    audio: [".mp3", ".wav", ".flac", ".ogg"]
+    video: [".mp4", ".mkv", ".avi", ".mov"]
+
+# --- convert ----------------------------------------------------------------
+# Rule = "<from_ext>: <to_ext>". Supported: image<->image and image->pdf.
+# Unsupported pairs are skipped (logged), never fatal.
+convert:
+  enabled: true
+  image_quality: 85
+  rules:
+    ".png": ".webp"
+    ".bmp": ".png"
+    ".tiff": ".jpg"
+
+# --- rename -----------------------------------------------------------------
+# Placeholders: {date} {time} {category} {stem} {ext} {hash8}
+rename:
+  enabled: true
+  pattern: "{date}_{category}_{stem}_{hash8}{ext}"
+
+# --- compress ---------------------------------------------------------------
+compress:
+  enabled: true
+  format: zip                # currently supported: "zip"
+  min_size_bytes: 1024       # skip files smaller than this
+
+# --- encrypt ----------------------------------------------------------------
+# Key is read from the environment variable named below (Fernet key).
+encrypt:
+  enabled: true
+  key_env: FILE_AUTOMATION_ENCRYPTION_KEY
+
+# --- backup -----------------------------------------------------------------
+backup:
+  enabled: true
+
+# --- email report -----------------------------------------------------------
+email:
+  enabled: false
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+  use_tls: true
+  sender: you@example.com
+  recipients:
+    - ops@example.com
+  username_env: FILE_AUTOMATION_SMTP_USERNAME
+  password_env: FILE_AUTOMATION_SMTP_PASSWORD
+  subject_prefix: "[FileAutomation]"
+  only_on_activity: true     # don't email when nothing was processed
+
+# --- logging ----------------------------------------------------------------
+logging:
+  level: INFO                 # DEBUG, INFO, WARNING, ERROR
+  file: ./logs/automation.log
+  console: true

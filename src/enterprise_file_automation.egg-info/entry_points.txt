@@ -1,0 +1,2 @@
+[console_scripts]
+file-automation = file_automation.main:main

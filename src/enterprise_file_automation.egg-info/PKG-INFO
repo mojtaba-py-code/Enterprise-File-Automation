@@ -1,0 +1,123 @@
+Metadata-Version: 2.4
+Name: enterprise-file-automation
+Version: 1.0.0
+Summary: Professional, config-driven file automation: watch, classify, convert, compress, encrypt, back up and report.
+Author: Mojtaba
+License: MIT
+Project-URL: Homepage, https://github.com/mojtaba/enterprise-file-automation
+Project-URL: Repository, https://github.com/mojtaba/enterprise-file-automation
+Keywords: automation,files,pipeline,backup,encryption
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: System :: Archiving
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: python-dotenv>=1.0
+Requires-Dist: cryptography>=42.0
+Requires-Dist: Pillow>=10.0
+Requires-Dist: schedule>=1.2
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: pytest-cov>=5.0; extra == "dev"
+Requires-Dist: ruff>=0.6; extra == "dev"
+Requires-Dist: mypy>=1.11; extra == "dev"
+Requires-Dist: types-PyYAML>=6.0; extra == "dev"
+Dynamic: license-file
+
+# Enterprise File Automation
+
+A professional, **config-driven** file-automation pipeline. Drop files into an
+inbox and the system classifies, converts, renames, compresses, encrypts, backs
+up and reports on them — on a schedule, idempotently, and without ever touching
+your original files.
+
+## Features
+
+| Capability | Module | Notes |
+|---|---|---|
+| Scheduled batch scanning | `scheduler.py` | Every *N* minutes via `schedule` |
+| New-file detection | `watcher.py` + `state.py` | SHA-256 content hashing |
+| Classification | `processors/classifier.py` | Extension → category rules |
+| Format conversion | `processors/converter.py` | Image↔image, image→PDF (Pillow) |
+| Standardized renaming | `processors/renamer.py` | Deterministic, collision-safe |
+| Compression | `processors/compressor.py` | ZIP (DEFLATE) |
+| Encryption | `processors/encryptor.py` | Fernet; key from env, never on disk |
+| Backup | `processors/backup.py` | Per-category snapshot |
+| E-mail reports | `notifier.py` | SMTP + STARTTLS, opt-in |
+| Logging | `logger.py` | Console + rotating file |
+| Config | `config.py` | Validated YAML |
+
+## Architecture
+
+```
+scheduler ─► watcher (hash + state) ─► pipeline ─► [ classify → convert →
+             rename → compress → encrypt → backup ] ─► output/ + backups/
+                                          │
+                                          └─► logger + e-mail report
+```
+
+The pipeline is a chain of interchangeable **processors** sharing one interface
+(`processors/base.py`). Each step reads a `FileContext` and returns it, so
+adding a capability is a new subclass plus one line of config. Every file is
+processed on an isolated **staging copy**; the inbox is never mutated and a
+failure in one file never aborts the run.
+
+### Idempotency & state
+
+`state.json` records the SHA-256 of every processed file. Unchanged files are
+skipped, edited files (new hash) are reprocessed, and files that keep failing
+are retried up to `max_retries` and then quarantined to `failed/`.
+
+## Install
+
+```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate    •    POSIX: source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+## Configure
+
+```bash
+cp config/config.example.yaml config/config.yaml
+cp .env.example .env
+file-automation keygen   # put the printed key in .env as FILE_AUTOMATION_ENCRYPTION_KEY
+```
+
+Edit `config/config.yaml` to taste. **Secrets stay in `.env`**, never in the
+YAML or in git.
+
+## Usage
+
+```bash
+file-automation init        # create working directories
+file-automation run-once    # one scan/process cycle (great for cron/testing)
+file-automation run         # start the scheduler (runs forever)
+file-automation keygen      # generate a new encryption key
+```
+
+Exit codes: `0` success, `1` some files failed, `2` configuration error.
+
+## Security notes
+
+- Encryption keys and SMTP passwords are read from environment variables only.
+- `.env`, `config/config.yaml`, `state.json` and all runtime data are
+  git-ignored by default.
+- Compression always precedes encryption (encrypted data is incompressible).
+
+## Development
+
+```bash
+pytest            # test-suite
+ruff check .      # lint
+mypy              # strict type-checking
+```
+
+## License
+
+MIT — see [LICENSE](LICENSE).
